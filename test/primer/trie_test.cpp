@@ -69,7 +69,7 @@ TEST(TrieTest, BasicRemoveTest1) {
   ASSERT_EQ(trie.Get<uint32_t>("tes"), nullptr);
   ASSERT_EQ(trie.Get<uint32_t>("test"), nullptr);
 }
-
+ 
 TEST(TrieTest, BasicRemoveTest2) {
   auto trie = Trie();
   // Put something
