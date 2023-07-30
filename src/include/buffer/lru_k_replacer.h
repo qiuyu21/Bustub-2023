@@ -26,14 +26,86 @@ namespace bustub {
 enum class AccessType { Unknown = 0, Get, Scan };
 
 class LRUKNode {
- private:
-  /** History of last seen K timestamps of this page. Least recent timestamp stored in front. */
-  // Remove maybe_unused if you start using them. Feel free to change the member variables as you want.
+  friend class LRUHeap;
+  friend class LRUKReplacer;
+  public:
+    LRUKNode(frame_id_t fid) : fid_(fid) {}
+  private:
+    frame_id_t fid_;
+    std::list<size_t> history_;
+    bool is_evictable_{false};
+    int i_{-1};
+};
 
-  [[maybe_unused]] std::list<size_t> history_;
-  [[maybe_unused]] size_t k_;
-  [[maybe_unused]] frame_id_t fid_;
-  [[maybe_unused]] bool is_evictable_{false};
+class LRUHeap {
+  public:
+    LRUHeap(size_t k) : k_(k) {}
+    void Push(std::shared_ptr<LRUKNode> &node) {
+      auto n = heap_.size();
+      heap_.push_back(node);
+      node->i_ = n;
+      up(n);
+    }
+    void Remove(int i) {
+      auto n = heap_.size();
+      BUSTUB_ASSERT(i >= 0 && size_t(i) < n, "index out of range.");
+      heap_[i]->i_ = -1;
+      heap_[n-1]->i_ = i;
+      heap_[i] = heap_[n-1];
+      heap_.pop_back();
+      down(i);
+    }
+    std::shared_ptr<LRUKNode> Pop() {
+      auto n = heap_.size();
+      BUSTUB_ASSERT(n > 0, "can't pop empty heap.");
+      auto node = heap_.front();
+      heap_[n-1]->i_ = 0;
+      heap_[0] = std::move(heap_[n-1]);
+      heap_.pop_back();
+      down(0);
+      node->i_ = -1;
+      return node;
+    }
+    size_t Size() {
+      return heap_.size();
+    }
+  private:
+    int compare_(std::shared_ptr<LRUKNode> &lhs, std::shared_ptr<LRUKNode> &rhs) {
+      // >0: lhs > rhs
+      // <0: rhs > lhs
+      if (lhs->history_.size() < k_) {
+        BUSTUB_ASSERT(rhs->history_.size() < k_, "BUG.");
+        return rhs->history_.front() - lhs->history_.front();
+      } else {
+        BUSTUB_ASSERT(rhs->history_.size() == k_, "BUG.");
+        return (lhs->history_.back() - lhs->history_.front()) - (rhs->history_.back() - rhs->history_.front());
+      }
+    }
+    void up(int i) {
+      while (1) {
+        if (i == 0) return;
+        auto j = (i - 1) / 2;
+        if (compare_(heap_[j], heap_[i]) > 0) return;
+        heap_[j]->i_ = i;
+        heap_[i]->i_ = j;
+        std::swap(heap_[j], heap_[i]);
+        i = j;
+      }
+    }
+    void down(int i) {
+      while (1) {
+        auto j = i * 2 + 1;
+        if (size_t(j) >= heap_.size()) return;
+        if (size_t(j) + 1 < heap_.size() && compare_(heap_[j+1], heap_[j]) > 0) j = j + 1;
+        if (compare_(heap_[i], heap_[j]) > 0) return;
+        heap_[i]->i_ = j;
+        heap_[j]->i_ = i;
+        std::swap(heap_[i], heap_[j]);
+        i = j;
+      }
+    }
+    std::vector<std::shared_ptr<LRUKNode>> heap_;
+    size_t k_;
 };
 
 /**
@@ -148,14 +220,14 @@ class LRUKReplacer {
   auto Size() -> size_t;
 
  private:
-  // TODO(student): implement me! You can replace these member variables as you like.
-  // Remove maybe_unused if you start using them.
-  [[maybe_unused]] std::unordered_map<frame_id_t, LRUKNode> node_store_;
-  [[maybe_unused]] size_t current_timestamp_{0};
-  [[maybe_unused]] size_t curr_size_{0};
-  [[maybe_unused]] size_t replacer_size_;
-  [[maybe_unused]] size_t k_;
-  [[maybe_unused]] std::mutex latch_;
+  std::unordered_map<frame_id_t, std::shared_ptr<LRUKNode>> node_store_;
+  size_t current_timestamp_{0};
+  size_t curr_size_{0};
+  size_t replacer_size_;
+  size_t k_;
+  LRUHeap less_than_k_heap_;
+  LRUHeap equal_to_k_heap_;
+  std::mutex latch_;
 };
 
 }  // namespace bustub

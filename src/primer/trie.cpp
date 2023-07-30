@@ -73,6 +73,7 @@ auto Trie::Remove(std::string_view key) const -> Trie {
     vec.pop_back();
   }
   t.root_ = last;
+  if (t.root_ && !t.root_->children_.size()) t.root_ = nullptr;
   return t;
 }
 
