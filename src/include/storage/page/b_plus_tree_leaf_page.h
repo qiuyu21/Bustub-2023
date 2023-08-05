@@ -54,10 +54,21 @@ class BPlusTreeLeafPage : public BPlusTreePage {
    */
   void Init(int max_size = LEAF_PAGE_SIZE);
 
-  // helper methods
   auto GetNextPageId() const -> page_id_t;
+
   void SetNextPageId(page_id_t next_page_id);
-  auto KeyAt(int index) const -> KeyType;
+  
+  const KeyType& KeyAt(int index) const;
+
+  auto IndexOfFirstKeyEqualOrGreaterThan(const KeyType &key, const KeyComparator &comparator) const -> std::pair<int, bool>;
+
+  auto Lookup(const KeyType &key, ValueType *val, const KeyComparator &comparator) const -> bool;
+
+  auto Insert(const KeyType &key, const ValueType &val, const KeyComparator &comparator) -> bool;
+
+  void InsertAt(const KeyType &key, const ValueType &val, int i);
+
+  void MoveHalfTo(BPlusTreeLeafPage *dst);
 
   /**
    * @brief for test only return a string representing all keys in
@@ -88,5 +99,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   page_id_t next_page_id_;
   // Flexible array member for page data.
   MappingType array_[0];
+
+  void CopyNFrom(int n, MappingType *data);
 };
 }  // namespace bustub

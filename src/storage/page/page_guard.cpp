@@ -12,7 +12,7 @@ BasicPageGuard::BasicPageGuard(BasicPageGuard &&that) noexcept {
 
 void BasicPageGuard::Drop() {
     if (bpm_ && page_) {
-        bpm_->UnpinPage(page_->GetPageId(), page_->IsDirty());
+        bpm_->UnpinPage(page_->GetPageId(), is_dirty_);
         bpm_ = nullptr;
         page_ = nullptr;
     }
@@ -40,8 +40,10 @@ auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & 
 }
 
 void ReadPageGuard::Drop() {
-    guard_.page_->RUnlatch();
-    guard_.Drop();
+    if (guard_.bpm_ && guard_.page_) {
+        guard_.page_->RUnlatch();
+        guard_.Drop();
+    }
 }
 
 ReadPageGuard::~ReadPageGuard() { Drop(); }  // NOLINT
@@ -57,8 +59,10 @@ auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard
 }
 
 void WritePageGuard::Drop() {
-    guard_.page_->WUnlatch();
-    guard_.Drop();
+    if (guard_.bpm_ && guard_.page_) {
+        guard_.page_->WUnlatch();
+        guard_.Drop();
+    }
 }
 
 WritePageGuard::~WritePageGuard() { Drop(); }  // NOLINT

@@ -40,38 +40,23 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   BPlusTreeInternalPage() = delete;
   BPlusTreeInternalPage(const BPlusTreeInternalPage &other) = delete;
 
-  /**
-   * Writes the necessary header information to a newly created page, must be called after
-   * the creation of a new page to make a valid BPlusTreeInternalPage
-   * @param max_size Maximal size of the page
-   */
   void Init(int max_size = INTERNAL_PAGE_SIZE);
 
-  /**
-   * @param index The index of the key to get. Index must be non-zero.
-   * @return Key at index
-   */
+  void Init(int max_size, const ValueType &lhs, const KeyType &mid, const ValueType &rhs);
+
   auto KeyAt(int index) const -> KeyType;
 
-  /**
-   *
-   * @param index The index of the key to set. Index must be non-zero.
-   * @param key The new value for key
-   */
   void SetKeyAt(int index, const KeyType &key);
 
-  /**
-   *
-   * @param value the value to search for
-   */
-  auto ValueIndex(const ValueType &value) const -> int;
-
-  /**
-   *
-   * @param index the index
-   * @return the value at the index
-   */
   auto ValueAt(int index) const -> ValueType;
+
+  auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> std::pair<ValueType, int>;
+
+  void MoveHalfTo(BPlusTreeInternalPage *dst);
+
+  void InsertAt(const KeyType &key, const ValueType &val, int i);
+
+  void MoveEndToHeadOf(BPlusTreeInternalPage *dst);
 
   /**
    * @brief For test only, return a string representing all keys in
@@ -102,5 +87,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
  private:
   // Flexible array member for page data.
   MappingType array_[0];
+
+  void CopyNFrom(int n, MappingType *data);
+  
+  void CopyToFront(MappingType *data);
 };
 }  // namespace bustub

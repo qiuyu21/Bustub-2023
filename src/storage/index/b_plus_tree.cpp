@@ -37,10 +37,26 @@ auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result, Transaction *txn) -> bool {
-  // Declaration of context instance.
-  Context ctx;
-  (void)ctx;
-  return false;
+  ReadPageGuard rg = bpm_->FetchPageRead(header_page_id_);
+  auto root_page = rg.As<BPlusTreeHeaderPage>();
+  auto pid = root_page->root_page_id_;
+  if (pid == INVALID_PAGE_ID) return false;
+  ReadPageGuard rg_1 = bpm_->FetchPageRead(pid);
+  rg.Drop();
+  while (1) {
+    auto internal_page = rg_1.As<InternalPage>();
+    if (internal_page->IsLeafPage()) {
+      auto leaf_page = rg_1.As<LeafPage>();
+      ValueType val;
+      if (!leaf_page->Lookup(key, &val, comparator_)) return false;
+      result->push_back(val);
+      return true;
+    } else {
+      pid = internal_page->Lookup(key, comparator_).first;
+      ReadPageGuard rg_2 = bpm_->FetchPageRead(pid);
+      rg_1 = std::move(rg_2);
+    }
+  }
 }
 
 /*****************************************************************************
@@ -55,11 +71,101 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *txn) -> bool {
-  // Declaration of context instance.
-  Context ctx;
-  (void)ctx;
-  return false;
+  WritePageGuard header_wg = bpm_->FetchPageWrite(header_page_id_);
+  auto header_page = header_wg.As<BPlusTreeHeaderPage>();
+  auto pid = header_page->root_page_id_;
+  std::deque<WritePageGuard> guards;
+  auto release_all = [&]{
+    header_wg.Drop();
+    while (guards.size()) guards.pop_front();
+  };
+  if (pid == INVALID_PAGE_ID) {
+    Page *page = bpm_->NewPage(&pid);
+    BUSTUB_ASSERT(page, "Failed to create new page.");
+    WritePageGuard leaf_wg = {bpm_, page};
+    auto leaf_page = leaf_wg.AsMut<LeafPage>();
+    leaf_page->Init(leaf_max_size_);
+    leaf_page->Insert(key, value, comparator_);
+    auto header_page = header_wg.AsMut<BPlusTreeHeaderPage>();
+    header_page->root_page_id_ = page->GetPageId();
+    return true;
+  }
+  std::deque<int> indexes;
+  do {
+    WritePageGuard wg = bpm_->FetchPageWrite(pid);
+    auto internal_page = wg.As<InternalPage>();
+    if (internal_page->GetSize() < internal_page->GetMaxSize()) release_all();
+    guards.push_back(std::move(wg));
+    if (internal_page->IsLeafPage()) break;
+    auto res = internal_page->Lookup(key, comparator_);
+    pid = res.first;
+    indexes.push_back(res.second);
+  } while (1);
+  // 
+  page_id_t last;
+  std::pair<KeyType, page_id_t> up;
+  auto &wg = guards.back();
+  auto leaf_page = wg.As<LeafPage>();
+  auto res = leaf_page->IndexOfFirstKeyEqualOrGreaterThan(key, comparator_);
+  if (res.second) {
+    release_all();
+    return false;
+  } else if (leaf_page->GetSize() < leaf_page->GetMaxSize()) {
+    auto leaf_page_w = wg.AsMut<LeafPage>();
+    leaf_page_w->InsertAt(key, value, res.first);
+    return true;
+  } else {
+    Page *page = bpm_->NewPage(&pid);
+    BUSTUB_ASSERT(page, "Failed to create new page.");
+    WritePageGuard wg1 = {bpm_, page};
+    auto leaf_page_new = wg1.AsMut<LeafPage>();
+    auto leaf_page_cur = wg.AsMut<LeafPage>();
+    leaf_page_new->Init(leaf_max_size_);
+    leaf_page_cur->MoveHalfTo(leaf_page_new);
+    leaf_page_new->SetNextPageId(leaf_page_cur->GetNextPageId());
+    leaf_page_cur->SetNextPageId(pid);
+    res.first <= leaf_page_cur->GetSize() ?
+      leaf_page_cur->InsertAt(key, value, res.first) :
+      leaf_page_new->InsertAt(key, value, res.first - leaf_page_cur->GetSize());
+    last = wg.PageId();
+    up = std::make_pair(leaf_page_new->KeyAt(0), pid);
+    guards.pop_back();
+  }
+  while (guards.size()) {
+    WritePageGuard wg = std::move(guards.back());
+    guards.pop_back();
+    last = wg.PageId();
+    auto internal_page_cur = wg.AsMut<InternalPage>();
+    auto i = indexes.back();
+    indexes.pop_back();
+    if (internal_page_cur->GetSize() < internal_page_cur->GetMaxSize()) {
+      internal_page_cur->InsertAt(up.first, up.second, i + 1);
+      return true;
+    }
+    Page *page = bpm_->NewPage(&pid);
+    BUSTUB_ASSERT(page, "Failed to create new page.");
+    WritePageGuard wg1 = {bpm_, page};
+    auto internal_page_new = wg1.AsMut<InternalPage>();
+    internal_page_new->Init(internal_max_size_);
+    internal_page_cur->MoveHalfTo(internal_page_new);
+    i < internal_page_cur->GetSize() ?
+      internal_page_cur->InsertAt(up.first, up.second, i + 1) :
+      internal_page_new->InsertAt(up.first, up.second, i - internal_page_cur->GetSize() + 1);
+    if (internal_page_new->GetSize() < internal_page_new->GetMinSize()) {
+      internal_page_cur->MoveEndToHeadOf(internal_page_new);
+    }
+    up = std::make_pair(internal_page_new->KeyAt(0), pid);
+  }
+  Page *page = bpm_->NewPage(&pid);
+  BUSTUB_ASSERT(page, "Failed to create new page.");
+  WritePageGuard wg1 = {bpm_, page};
+  auto internal_page_new = wg1.AsMut<InternalPage>();
+  internal_page_new->Init(internal_max_size_, last, up.first, up.second);
+  auto header_page_w = header_wg.AsMut<BPlusTreeHeaderPage>();
+  header_page_w->root_page_id_ = page->GetPageId();
+  return true;
 }
+
 
 /*****************************************************************************
  * REMOVE
@@ -109,7 +215,12 @@ auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); 
  * @return Page id of the root of this tree
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t { return 0; }
+auto BPLUSTREE_TYPE::GetRootPageId() -> page_id_t {
+  ReadPageGuard header_rg = bpm_->FetchPageRead(header_page_id_);
+  auto header_page = header_rg.As<BPlusTreeHeaderPage>();
+  auto pid = header_page->root_page_id_;
+  return pid;
+}
 
 /*****************************************************************************
  * UTILITIES AND DEBUG
