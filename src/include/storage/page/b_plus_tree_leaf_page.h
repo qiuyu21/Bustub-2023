@@ -72,9 +72,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   void MoveHalfTo(BPlusTreeLeafPage *dst);
 
-  void MoveEndToFrontOf(void *dst) override;
+  void MoveBackToFrontOf(void *dst);
 
-  void MoveFrontToEndOf(void *dst) override;
+  void MoveFrontToBackOf(void *dst);
 
   /**
    * @brief for test only return a string representing all keys in

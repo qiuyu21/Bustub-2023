@@ -56,9 +56,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   void InsertAt(const KeyType &key, const ValueType &val, int i);
 
-  void MoveEndToFrontOf(void *dst) override;
+  void MoveBackToFrontOf(void *dst);
 
-  void MoveFrontToEndOf(void *dst) override;
+  void MoveFrontToBackOf(void *dst);
 
   /**
    * @brief For test only, return a string representing all keys in

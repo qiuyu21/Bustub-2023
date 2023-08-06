@@ -88,8 +88,6 @@ TEST(BPlusTreeTests, InsertTest2) {
     tree.Insert(index_key, rid, transaction);
   }
 
-  tree.Print(bpm);
-
   std::vector<RID> rids;
   for (auto key : keys) {
     rids.clear();

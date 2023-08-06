@@ -76,7 +76,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *dst) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndToFrontOf(void *data) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveBackToFrontOf(void *data) {
   auto dst = static_cast<BPlusTreeInternalPage *>(data);
   auto n = GetSize();
   BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
@@ -85,7 +85,7 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndToFrontOf(void *data) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontToEndOf(void *data) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontToBackOf(void *data) {
   auto dst = static_cast<BPlusTreeInternalPage *>(data);
   auto n = GetSize();
   BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
