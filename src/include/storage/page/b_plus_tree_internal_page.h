@@ -56,7 +56,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   void InsertAt(const KeyType &key, const ValueType &val, int i);
 
-  void MoveEndToHeadOf(BPlusTreeInternalPage *dst);
+  void MoveEndToFrontOf(void *dst) override;
+
+  void MoveFrontToEndOf(void *dst) override;
 
   /**
    * @brief For test only, return a string representing all keys in
@@ -89,7 +91,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   MappingType array_[0];
 
   void CopyNFrom(int n, MappingType *data);
-  
+
   void CopyToFront(MappingType *data);
+
+  void CopyToBack(MappingType *data);
 };
 }  // namespace bustub

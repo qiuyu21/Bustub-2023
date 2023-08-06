@@ -91,10 +91,37 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::InsertAt(const KeyType &key, const ValueType &v
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::Remove(int i) {
+  auto n = GetSize();
+  BUSTUB_ASSERT(i < n, "i is out of range.");
+  for (auto j = i; j < n - 1; j++) array_[j] = std::move(array_[j+1]);
+  IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *dst) {
   auto n = GetSize() / 2;
   dst->CopyNFrom(n, &array_[GetSize()-n]);
   IncreaseSize(-n);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveEndToFrontOf(void *data) {
+  auto dst = static_cast<BPlusTreeLeafPage *>(data);
+  auto n = GetSize();
+  BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
+  dst->CopyToFront(&array_[n-1]);
+  IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveFrontToEndOf(void *data) {
+  auto dst = static_cast<BPlusTreeLeafPage *>(data);
+  auto n = GetSize();
+  BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
+  dst->CopyToBack(array_);
+  for (auto i = 1; i < n; i++) array_[i-1] = std::move(array_[i]);
+  IncreaseSize(-1);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -103,6 +130,23 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyNFrom(int n, MappingType *data) {
   BUSTUB_ASSERT(n_cur + n <= n_max, "Not enough space to copy.");
   for (auto i = n_cur; i < n_cur + n; i++) array_[i] = std::move(data[i-n_cur]);
   IncreaseSize(n);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToFront(MappingType *data) {
+  auto n = GetSize();
+  BUSTUB_ASSERT(n + 1 <= GetMaxSize(), "Not enough space to copy.");
+  for (auto i = n - 1; i >= 0; i--) array_[i+1] = std::move(array_[i]);
+  array_[0] = std::move(*data);
+  IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::CopyToBack(MappingType *data) {
+  auto n = GetSize();
+  BUSTUB_ASSERT(n + 1 <= GetMaxSize(), "Not enough space to copy.");
+  array_[n] = std::move(*data);
+  IncreaseSize(1);
 }
 
 template class BPlusTreeLeafPage<GenericKey<4>, RID, GenericComparator<4>>;

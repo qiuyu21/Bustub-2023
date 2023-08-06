@@ -68,7 +68,13 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   void InsertAt(const KeyType &key, const ValueType &val, int i);
 
+  void Remove(int i);
+
   void MoveHalfTo(BPlusTreeLeafPage *dst);
+
+  void MoveEndToFrontOf(void *dst) override;
+
+  void MoveFrontToEndOf(void *dst) override;
 
   /**
    * @brief for test only return a string representing all keys in
@@ -101,5 +107,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   MappingType array_[0];
 
   void CopyNFrom(int n, MappingType *data);
+
+  void CopyToFront(MappingType *data);
+
+  void CopyToBack(MappingType *data);
 };
 }  // namespace bustub

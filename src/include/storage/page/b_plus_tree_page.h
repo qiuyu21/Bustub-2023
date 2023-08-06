@@ -55,6 +55,10 @@ class BPlusTreePage {
   auto GetMaxSize() const -> int;
   void SetMaxSize(int max_size);
   auto GetMinSize() const -> int;
+  
+  auto CanBorrow() const -> bool;
+  virtual void MoveEndToFrontOf(void *data) = 0;
+  virtual void MoveFrontToEndOf(void *data) = 0;
 
  private:
   // member variable, attributes that both internal and leaf page share

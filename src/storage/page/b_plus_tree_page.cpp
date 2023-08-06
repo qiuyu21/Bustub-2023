@@ -40,4 +40,6 @@ void BPlusTreePage::SetMaxSize(int size) { max_size_ = size; }
  */
 auto BPlusTreePage::GetMinSize() const -> int { return (max_size_+1)/2; }
 
+auto BPlusTreePage::CanBorrow() const -> bool { return GetSize() > GetMinSize(); }
+
 }  // namespace bustub

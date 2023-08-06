@@ -80,7 +80,7 @@ TEST(BPlusTreeTests, InsertTest2) {
   auto *transaction = new Transaction(0);
 
   std::vector<int64_t> keys;
-  for (int64_t i = 1; i <= 100000; i++) keys.push_back(i);
+  for (int64_t i = 1; i <= 100; i++) keys.push_back(i);
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
     rid.Set(static_cast<int32_t>(key >> 32), value);

@@ -59,6 +59,15 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
   }
 }
 
+#define PRE_INSERT_AND_REMOVE WritePageGuard header_wg = bpm_->FetchPageWrite(header_page_id_); \
+                              auto header_page = header_wg.As<BPlusTreeHeaderPage>();           \
+                              auto pid = header_page->root_page_id_;                            \
+                              std::deque<WritePageGuard> guards;                                \
+                              auto release_all = [&]{                                           \
+                                header_wg.Drop();                                               \
+                                while (guards.size()) guards.pop_front();                       \
+                              };                                                                \
+
 /*****************************************************************************
  * INSERTION
  *****************************************************************************/
@@ -71,14 +80,7 @@ auto BPLUSTREE_TYPE::GetValue(const KeyType &key, std::vector<ValueType> *result
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transaction *txn) -> bool {
-  WritePageGuard header_wg = bpm_->FetchPageWrite(header_page_id_);
-  auto header_page = header_wg.As<BPlusTreeHeaderPage>();
-  auto pid = header_page->root_page_id_;
-  std::deque<WritePageGuard> guards;
-  auto release_all = [&]{
-    header_wg.Drop();
-    while (guards.size()) guards.pop_front();
-  };
+  PRE_INSERT_AND_REMOVE
   if (pid == INVALID_PAGE_ID) {
     Page *page = bpm_->NewPage(&pid);
     BUSTUB_ASSERT(page, "Failed to create new page.");
@@ -152,7 +154,7 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
       internal_page_cur->InsertAt(up.first, up.second, i + 1) :
       internal_page_new->InsertAt(up.first, up.second, i - internal_page_cur->GetSize() + 1);
     if (internal_page_new->GetSize() < internal_page_new->GetMinSize()) {
-      internal_page_cur->MoveEndToHeadOf(internal_page_new);
+      internal_page_cur->MoveEndToFrontOf(internal_page_new);
     }
     up = std::make_pair(internal_page_new->KeyAt(0), pid);
   }
@@ -166,22 +168,47 @@ auto BPLUSTREE_TYPE::Insert(const KeyType &key, const ValueType &value, Transact
   return true;
 }
 
-
 /*****************************************************************************
  * REMOVE
  *****************************************************************************/
 /*
  * Delete key & value pair associated with input key
- * If current tree is empty, return immediately.
+* If current tree is empty, return immediately.
  * If not, User needs to first find the right leaf page as deletion target, then
  * delete entry from leaf page. Remember to deal with redistribute or merge if
  * necessary.
  */
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
-  // Declaration of context instance.
-  Context ctx;
-  (void)ctx;
+  // PRE_INSERT_AND_REMOVE
+  // if (pid == INVALID_PAGE_ID) return;
+  // std::deque<int> indexes;
+  // do {
+  //   WritePageGuard wg = bpm_->FetchPageWrite(pid);
+  //   auto internal_page = wg.As<InternalPage>();
+  //   if (internal_page->GetSize() > internal_page->GetMinSize()) release_all();
+  //   guards.push_back(std::move(wg));
+  //   if (internal_page->IsLeafPage()) break;
+  //   auto res = internal_page->Lookup(key, comparator_);
+  //   pid = res.first;
+  //   indexes.push_back(res.second);
+  // } while(1);
+  // auto wg = guards.back();
+  // guards.pop_back();
+  // auto leaf_page = wg.As<LeafPage>();
+  // auto res = leaf_page->IndexOfFirstKeyEqualOrGreaterThan(key, comparator_);
+  // if (!res.second) {
+  //   release_all();
+  //   return;
+  // }
+  // auto leaf_page_cur = wg.AsMut<LeafPage>();
+  // leaf_page_cur->Remove(res.first);
+  // if (leaf_page_cur->GetSize() >= leaf_page_cur->GetMinSize()) return;
+  // while (guards.size()) {
+  //   auto &wg_parent = guards.back();
+  //   auto i = indexes.bacK();
+  //   // Need to borrow from either i - 1 or i + 1
+  // }
 }
 
 /*****************************************************************************

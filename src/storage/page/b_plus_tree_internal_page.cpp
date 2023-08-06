@@ -76,9 +76,21 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveHalfTo(BPlusTreeInternalPage *dst) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndToHeadOf(BPlusTreeInternalPage *dst) {
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveEndToFrontOf(void *data) {
+  auto dst = static_cast<BPlusTreeInternalPage *>(data);
   auto n = GetSize();
+  BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
   dst->CopyToFront(&array_[n-1]);
+  IncreaseSize(-1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveFrontToEndOf(void *data) {
+  auto dst = static_cast<BPlusTreeInternalPage *>(data);
+  auto n = GetSize();
+  BUSTUB_ASSERT(n > 0, "Can't move an empty internal node.");
+  dst->CopyToBack(array_);
+  for (auto i = 1; i < n; i++) array_[i-1] = std::move(array_[i]);
   IncreaseSize(-1);
 }
 
@@ -109,6 +121,13 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToFront(MappingType *data) {
   IncreaseSize(1);
 }
 
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToBack(MappingType *data) {
+  auto n = GetSize();
+  BUSTUB_ASSERT(n + 1 <= GetMaxSize(), "Not enough space to copy.");
+  array_[n] = std::move(*data);
+  IncreaseSize(1);
+}
 
 // valuetype for internalNode should be page id_t
 template class BPlusTreeInternalPage<GenericKey<4>, page_id_t, GenericComparator<4>>;
