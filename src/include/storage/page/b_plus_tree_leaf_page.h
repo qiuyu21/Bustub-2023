@@ -70,6 +70,8 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   void Remove(int i);
 
+  void MoveAllTo(BPlusTreeLeafPage *dst);
+
   void MoveHalfTo(BPlusTreeLeafPage *dst);
 
   void MoveBackToFrontOf(void *dst);

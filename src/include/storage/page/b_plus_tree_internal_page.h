@@ -52,6 +52,8 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
   auto Lookup(const KeyType &key, const KeyComparator &comparator) const -> std::pair<ValueType, int>;
 
+  void MoveAllTo(BPlusTreeInternalPage *dst);
+
   void MoveHalfTo(BPlusTreeInternalPage *dst);
 
   void InsertAt(const KeyType &key, const ValueType &val, int i);
@@ -59,6 +61,8 @@ class BPlusTreeInternalPage : public BPlusTreePage {
   void MoveBackToFrontOf(void *dst);
 
   void MoveFrontToBackOf(void *dst);
+
+  void Remove(int i);
 
   /**
    * @brief For test only, return a string representing all keys in

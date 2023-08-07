@@ -34,19 +34,16 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Init(int max_size, const ValueType &lhs, co
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::KeyAt(int index) const -> KeyType {
-  BUSTUB_ASSERT(index >= 0 && index < GetSize(), "index out of range.");
   return array_[index].first;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_INTERNAL_PAGE_TYPE::SetKeyAt(int index, const KeyType &key) {
-  BUSTUB_ASSERT(index > 0 && index < GetSize(), "index out of range.");
   array_[index].first = key;
 }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType {
-  BUSTUB_ASSERT(index >= 0 && index < GetSize(), "index out of range.");
   return array_[index].second;
 }
 
@@ -62,10 +59,17 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::Lookup(const KeyType &key, const KeyCompara
     } else if (res > 0) {
       i = mid + 1;
     } else {
-      return std::make_pair(array_[mid].second, j);
+      return std::make_pair(array_[mid].second, mid);
     }
   }
   return std::make_pair(array_[j].second, j);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveAllTo(BPlusTreeInternalPage *dst) {
+  auto n = GetSize();
+  dst->CopyNFrom(n, array_);
+  IncreaseSize(-n);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -127,6 +131,14 @@ void B_PLUS_TREE_INTERNAL_PAGE_TYPE::CopyToBack(MappingType *data) {
   BUSTUB_ASSERT(n + 1 <= GetMaxSize(), "Not enough space to copy.");
   array_[n] = std::move(*data);
   IncreaseSize(1);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_INTERNAL_PAGE_TYPE::Remove(int i) {
+  auto n = GetSize();
+  BUSTUB_ASSERT(i >= 0 && i < n, "Remove out of range.");
+  for (auto j = i; j < n - 1; j++) array_[j] = std::move(array_[j+1]);
+  IncreaseSize(-1);
 }
 
 // valuetype for internalNode should be page id_t

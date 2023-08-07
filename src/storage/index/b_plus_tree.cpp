@@ -202,18 +202,28 @@ void BPLUSTREE_TYPE::Remove(const KeyType &key, Transaction *txn) {
   }
   auto leaf_page_cur = wg_leaf.AsMut<LeafPage>();
   leaf_page_cur->Remove(res.first);
-  if (leaf_page_cur->GetSize() >= leaf_page_cur->GetMinSize()) return;  // No need to release here
-  auto leaf_handled = false;
+  if (leaf_page_cur->GetSize() >= leaf_page_cur->GetMinSize()) return;
+  auto isChildLeaf = true;
   while (guards.size() >= 2) {
     auto wg_child = std::move(guards.back());
     guards.pop_back();
     auto &wg_parent = guards.back();
-    if (Borrow(wg_parent, wg_child, indexes.back(), leaf_handled)) {
+    if (Borrow(wg_parent, wg_child, indexes.back(), isChildLeaf)) {
       release_all();
       return; 
     }
-    // TODO:
-    // Merge
+    Merge(wg_parent, wg_child, indexes.back(), isChildLeaf);
+    isChildLeaf = false;
+    indexes.pop_back();
+  }
+  WritePageGuard &wg = guards.back();
+  auto internal_page_r = wg.As<InternalPage>();
+  if (internal_page_r->GetSize() >= internal_page_r->GetMinSize() || internal_page_r->IsLeafPage()) {
+    return;
+  } else if (internal_page_r->GetSize() == 1) {
+    auto internal_page = wg.AsMut<InternalPage>();
+    auto header_page_w = header_wg.AsMut<BPlusTreeHeaderPage>();
+    header_page_w->root_page_id_ = internal_page->ValueAt(0);
   }
 }
 
@@ -231,17 +241,15 @@ INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Borrow(WritePageGuard &parent, WritePageGuard &child, int childIndex, bool isChildLeaf) -> bool {
   auto parent_page_r = parent.As<InternalPage>();
   int indexes[2] = {-1, -1};
-  if (childIndex >= 1) indexes[0] = childIndex - 1;
+  if (childIndex > 0) indexes[0] = childIndex - 1;
   if (childIndex < parent_page_r->GetSize() - 1) indexes[1] = childIndex + 1;
   for (auto i = 0; i < 2; i++) {
     if (indexes[i] == -1) continue;
     BasicPageGuard sibling_pg = bpm_->FetchPageBasic(parent_page_r->ValueAt(indexes[i]));
-    {
-      auto sibling_page_r = sibling_pg.As<BPlusTreePage>();
-      if (!sibling_page_r->CanBorrow()) continue;
-    }
+    auto sibling_page_r = sibling_pg.As<BPlusTreePage>();
+    if (!sibling_page_r->CanBorrow()) continue;
     auto parent_page = parent.AsMut<InternalPage>();
-    if (!isChildLeaf) {
+    if (isChildLeaf) {
       BORROW(LeafPage)
     } else {
       BORROW(InternalPage)
@@ -249,6 +257,41 @@ auto BPLUSTREE_TYPE::Borrow(WritePageGuard &parent, WritePageGuard &child, int c
     return true;
   }
   return false;
+}
+
+
+#define MERGE(type) auto cur_page = child.AsMut<type>();          \
+                    auto sibling_page = sibling_pg.AsMut<type>(); \
+                    r == childIndex ?                             \
+                      cur_page->MoveAllTo(sibling_page) :         \
+                      sibling_page->MoveAllTo(cur_page);          \
+
+INDEX_TEMPLATE_ARGUMENTS
+void BPLUSTREE_TYPE::Merge(WritePageGuard &parent, WritePageGuard &child, int childIndex, bool isChildLeaf) {
+  auto parent_page = parent.AsMut<InternalPage>();
+  int l = childIndex > 0 ? childIndex - 1 : childIndex;
+  int r = l + 1;
+  BasicPageGuard sibling_pg = r == childIndex ?
+                                bpm_->FetchPageBasic(parent_page->ValueAt(l)) : 
+                                bpm_->FetchPageBasic(parent_page->ValueAt(r));
+  if (isChildLeaf) {
+    auto cur_page = child.AsMut<LeafPage>();
+    auto sibling_page = sibling_pg.AsMut<LeafPage>();
+    r == childIndex ?
+      sibling_page->SetNextPageId(cur_page->GetNextPageId()) :
+      cur_page->SetNextPageId(sibling_page->GetNextPageId());
+  } else {
+    r == childIndex ?
+      child.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r)) :
+      sibling_pg.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r));
+  }
+  if (isChildLeaf) {
+    MERGE(LeafPage)
+  } else {
+    MERGE(InternalPage)
+  }
+  // TODO: deallocate the page
+  parent_page->Remove(r);
 }
 
 /*****************************************************************************

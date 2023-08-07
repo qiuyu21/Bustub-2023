@@ -131,7 +131,9 @@ class BPlusTree {
   auto ToPrintableBPlusTree(page_id_t root_id) -> PrintableBPlusTree;
 
 
-  auto Borrow(WritePageGuard &parent, WritePageGuard &child, int childIndx, bool isChildLeaf) -> bool;
+  auto Borrow(WritePageGuard &parent, WritePageGuard &child, int childIndex, bool isChildLeaf) -> bool;
+
+  void Merge(WritePageGuard &parent, WritePageGuard &child, int childIndex, bool isChildLeaf);
 
   // member variable
   std::string index_name_;

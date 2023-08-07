@@ -99,6 +99,13 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Remove(int i) {
 }
 
 INDEX_TEMPLATE_ARGUMENTS
+void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveAllTo(BPlusTreeLeafPage *dst) {
+  auto n = GetSize();
+  dst->CopyNFrom(n, array_);
+  IncreaseSize(-n);
+}
+
+INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::MoveHalfTo(BPlusTreeLeafPage *dst) {
   auto n = GetSize() / 2;
   dst->CopyNFrom(n, &array_[GetSize()-n]);
