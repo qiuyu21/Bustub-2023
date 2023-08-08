@@ -13,10 +13,16 @@
 
 namespace bustub {
 IndexScanExecutor::IndexScanExecutor(ExecutorContext *exec_ctx, const IndexScanPlanNode *plan)
-    : AbstractExecutor(exec_ctx) {}
+    : AbstractExecutor(exec_ctx), plan_(plan) {}
 
-void IndexScanExecutor::Init() { throw NotImplementedException("IndexScanExecutor is not implemented"); }
+void IndexScanExecutor::Init() {
+    throw NotImplementedException("IndexScanExecutor is not implemented");
+    // auto *catalog = exec_ctx_->GetCatalog();
+    // auto *indexInfo = catalog->GetIndex(plan_->index_oid_);
+}
 
-auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool { return false; }
+auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+    return false;
+}
 
 }  // namespace bustub

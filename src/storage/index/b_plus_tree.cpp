@@ -307,7 +307,7 @@ void BPLUSTREE_TYPE::Merge(WritePageGuard &parent, WritePageGuard &child, int ch
  */
 INDEX_TEMPLATE_ARGUMENTS
 auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
-  return INDEXITERATOR_TYPE();
+  return INDEXITERATOR_TYPE(header_page_id_, bpm_);
 }
 
 /*
@@ -316,7 +316,9 @@ auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE {
+  return INDEXITERATOR_TYPE(header_page_id_, bpm_, key, comparator_);
+}
 
 /*
  * Input parameter is void, construct an index iterator representing the end
@@ -324,7 +326,9 @@ auto BPLUSTREE_TYPE::Begin(const KeyType &key) -> INDEXITERATOR_TYPE { return IN
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::End() -> INDEXITERATOR_TYPE {
+  return INDEXITERATOR_TYPE();
+}
 
 /**
  * @return Page id of the root of this tree

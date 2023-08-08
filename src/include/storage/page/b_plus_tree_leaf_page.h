@@ -58,7 +58,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
 
   void SetNextPageId(page_id_t next_page_id);
   
-  const KeyType& KeyAt(int index) const;
+  KeyType KeyAt(int index) const;
+
+  const MappingType& At(int index) const;
 
   auto IndexOfFirstKeyEqualOrGreaterThan(const KeyType &key, const KeyComparator &comparator) const -> std::pair<int, bool>;
 

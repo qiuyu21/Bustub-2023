@@ -22,6 +22,7 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
   SetSize(0);
   SetMaxSize(max_size);
   SetPageType(IndexPageType::LEAF_PAGE);
+  SetNextPageId(INVALID_PAGE_ID);
 }
 
 INDEX_TEMPLATE_ARGUMENTS
@@ -31,9 +32,15 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetNextPageId(page_id_t next_page_id) { next_page_id_ = next_page_id; }
 
 INDEX_TEMPLATE_ARGUMENTS
-const KeyType& B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
+KeyType B_PLUS_TREE_LEAF_PAGE_TYPE::KeyAt(int index) const {
   BUSTUB_ASSERT(index >= 0 && index < GetSize(), "index out of range.");
   return array_[index].first;
+}
+
+INDEX_TEMPLATE_ARGUMENTS
+const MappingType& B_PLUS_TREE_LEAF_PAGE_TYPE::At(int index) const {
+  BUSTUB_ASSERT(index >= 0 && index < GetSize(), "index out of range.");
+  return array_[index];
 }
 
 INDEX_TEMPLATE_ARGUMENTS
