@@ -259,7 +259,6 @@ auto BPLUSTREE_TYPE::Borrow(WritePageGuard &parent, WritePageGuard &child, int c
   return false;
 }
 
-
 #define MERGE(type) auto cur_page = child.AsMut<type>();          \
                     auto sibling_page = sibling_pg.AsMut<type>(); \
                     r == childIndex ?                             \
@@ -269,26 +268,30 @@ auto BPLUSTREE_TYPE::Borrow(WritePageGuard &parent, WritePageGuard &child, int c
 INDEX_TEMPLATE_ARGUMENTS
 void BPLUSTREE_TYPE::Merge(WritePageGuard &parent, WritePageGuard &child, int childIndex, bool isChildLeaf) {
   auto parent_page = parent.AsMut<InternalPage>();
-  int l = childIndex > 0 ? childIndex - 1 : childIndex;
-  int r = l + 1;
-  BasicPageGuard sibling_pg = r == childIndex ?
-                                bpm_->FetchPageBasic(parent_page->ValueAt(l)) : 
-                                bpm_->FetchPageBasic(parent_page->ValueAt(r));
-  if (isChildLeaf) {
-    auto cur_page = child.AsMut<LeafPage>();
-    auto sibling_page = sibling_pg.AsMut<LeafPage>();
-    r == childIndex ?
-      sibling_page->SetNextPageId(cur_page->GetNextPageId()) :
-      cur_page->SetNextPageId(sibling_page->GetNextPageId());
-  } else {
-    r == childIndex ?
-      child.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r)) :
-      sibling_pg.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r));
-  }
-  if (isChildLeaf) {
-    MERGE(LeafPage)
-  } else {
-    MERGE(InternalPage)
+  int r = childIndex;
+  // TODO:
+  if (child.AsMut<InternalPage>()->GetSize()) {
+    int l = childIndex > 0 ? childIndex - 1 : childIndex;
+    r = l + 1;
+    BasicPageGuard sibling_pg = r == childIndex ?
+                                  bpm_->FetchPageBasic(parent_page->ValueAt(l)) : 
+                                  bpm_->FetchPageBasic(parent_page->ValueAt(r));
+    if (isChildLeaf) {
+      auto cur_page = child.AsMut<LeafPage>();
+      auto sibling_page = sibling_pg.AsMut<LeafPage>();
+      r == childIndex ?
+        sibling_page->SetNextPageId(cur_page->GetNextPageId()) :
+        cur_page->SetNextPageId(sibling_page->GetNextPageId());
+    } else {
+      r == childIndex ?
+        child.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r)) :
+        sibling_pg.AsMut<InternalPage>()->SetKeyAt(0, parent_page->KeyAt(r));
+    }
+    if (isChildLeaf) {
+      MERGE(LeafPage)
+    } else {
+      MERGE(InternalPage)
+    }
   }
   // TODO: deallocate the page
   parent_page->Remove(r);
@@ -303,7 +306,9 @@ void BPLUSTREE_TYPE::Merge(WritePageGuard &parent, WritePageGuard &child, int ch
  * @return : index iterator
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE { return INDEXITERATOR_TYPE(); }
+auto BPLUSTREE_TYPE::Begin() -> INDEXITERATOR_TYPE {
+  return INDEXITERATOR_TYPE();
+}
 
 /*
  * Input parameter is low key, find the leaf page that contains the input key
